@@ -1,24 +1,35 @@
 #include <iostream>
-#include <fstream>
-#include <unordered_set>
 #include <vector>
+#include <unordered_set>
+#include <unordered_map>
 #include <string>
 #include <chrono>
+#include <algorithm>
 
 using namespace std;
+using namespace std::chrono;
+
+unordered_map<string, bool> memoised_map;
 
 bool isCompound(const string& word, const unordered_set<string>& ws) {
+    if (memoised_map.find(word) != memoised_map.end()) {
+        return memoised_map[word];
+    }
+
     for (int i = 1; i < word.size(); ++i) {
-        string prefix = word.substr(0, i);  // First part
-        string suffix = word.substr(i);     // Remaining part
+        string prefix = word.substr(0, i);
+        string suffix = word.substr(i);
+        
+        if (ws.count(prefix) && ws.count(suffix)) {
+            return memoised_map[word] = true;
+        }
 
-        if (ws.count(prefix) && ws.count(suffix)) return true;
-
-        if (ws.count(prefix) && ws.count(suffix) == 0) {
-            if (isCompound(suffix, ws)) return true;
+        if (ws.count(prefix) && isCompound(suffix, ws)) {
+            return memoised_map[word] = true;
         }
     }
-    return false;
+
+    return memoised_map[word] = false;
 }
 
 int main() {
@@ -26,28 +37,18 @@ int main() {
     unordered_set<string> ws;
     vector<string> words;
 
-    // Start timing using chrono method 
-    auto startTime = chrono::high_resolution_clock::now();
+    auto start = high_resolution_clock::now();
 
-    // Read words from both files
-    for (const string& fileName : fileNames) {
-        ifstream inputFile(fileName);
-        if (!inputFile) {
-            cerr << "Error in opening the file: " << fileName << endl;
-            return 1;
-        }
-        string word;
-        while (inputFile >> word) {
-            words.push_back(word);
-            ws.insert(word); 
-        }
-    }
+    unordered_set<string> ws(words.begin(), words.end());
 
     string longestWord, secondLongestWord;
 
+    sort(words.begin(), words.end(), [](const string& a, const string& b) {
+        return a.size() < b.size();
+    });
+
     for (const string& word : words) {
-        ws.erase(word);  
-        if (isCompound(word, ws)) {
+        if (isCompound(word, wordSet)) {
             if (word.size() > longestWord.size()) {
                 secondLongestWord = longestWord;
                 longestWord = word;
@@ -55,17 +56,17 @@ int main() {
                 secondLongestWord = word;
             }
         }
-        ws.insert(word); 
     }
 
-    // Stop timing
-    auto endTime = chrono::high_resolution_clock::now();
-    auto duration = chrono::duration_cast<chrono::milliseconds>(endTime - startTime);
-
-    // Output results
-    cout << "The first Longest compounded word is: " << longestWord << endl;
+    // Output the results
+    cout << "The longest compounded word is: " << longestWord << endl;
     cout << "The second longest compounded word is: " << secondLongestWord << endl;
-    cout << "The time taken to perform the task is: " << duration.count() << " milliseconds" << endl;
+
+    auto end = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(end - start); 
+
+    // Output time taken for the process
+    cout << "The time taken for the task is: " << duration.count() << " milliseconds" << endl;
 
     return 0;
 }
